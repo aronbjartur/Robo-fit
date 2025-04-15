@@ -1,4 +1,4 @@
-
+// src/app/api/exercises/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
@@ -8,21 +8,17 @@ const jwtSecret = process.env.JWT_SECRET;
 
 interface JwtPayload {
   id: number;
-  username: string; 
-  admin: boolean;   
+  username: string;
+  admin: boolean;
 }
 
-interface RouteContext {
-  params: {
-    id: string; 
-  }
-}
-
+// Breyta þessu aftur til að nota { params } beint
 export async function DELETE(
-  request: Request, 
-  context: RouteContext 
+  request: Request,
+  { params }: { params: { id: string } } // Nota þessa uppbyggingu
 ) {
-  const exerciseIdParam = context.params.id;
+  // Lesa id beint úr params
+  const exerciseIdParam = params.id;
   const exerciseId = parseInt(exerciseIdParam, 10);
   if (isNaN(exerciseId)) { return NextResponse.json({ error: 'Invalid ID' }, { status: 400 }); }
 
@@ -33,7 +29,9 @@ export async function DELETE(
   let userId: number;
   try {
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-    if (!decoded || typeof decoded.id !== 'number') { throw new Error('Invalid token payload structure'); }
+    if (!decoded || typeof decoded.id !== 'number') {
+      throw new Error('Invalid token payload structure');
+    }
     userId = decoded.id;
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,7 +42,7 @@ export async function DELETE(
       where: { id: exerciseId, userId: userId },
       select: { id: true }
     });
-    if (!exercise) { return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 }); } 
+    if (!exercise) { return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 }); }
 
     await prisma.$transaction(async (tx) => {
       await tx.workoutLog.deleteMany({ where: { exerciseId: exerciseId } });
@@ -52,7 +50,7 @@ export async function DELETE(
       await tx.exercise.delete({ where: { id: exerciseId } });
     });
 
-    return new NextResponse(null, { status: 204 }); 
+    return new NextResponse(null, { status: 204 });
 
   } catch (error) {
     console.error(`API Error deleting exercise ${exerciseId}:`, error);
