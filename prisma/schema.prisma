@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client" 
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String   
+  admin     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  
+  customExercises Exercise[] @relation("UserCustomExercises") 
+  customRoutines  Routine[]  @relation("UserCustomRoutines")  
+  workoutLogs     WorkoutLog[] 
+}
+
+model Exercise {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique 
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      Int?
+  user        User?    @relation("UserCustomExercises", fields: [userId], references: [id])
+
+  routineExercises RoutineExercise[]
+  workoutLogs      WorkoutLog[]
+}
+
+model Routine {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique 
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    Int?
+  user      User?    @relation("UserCustomRoutines", fields: [userId], references: [id])
+
+  exercises RoutineExercise[]
+}
+
+model RoutineExercise {
+  id         Int      @id @default(autoincrement())
+  routineId  Int
+  exerciseId Int
+  order      Int?     
+  createdAt  DateTime @default(now())
+
+  routine    Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade) 
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade) 
+
+  @@unique([routineId, exerciseId]) 
+}
+
+model WorkoutLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  exerciseId Int
+  date       DateTime 
+  sets       Int      
+  reps       Int      
+  weight     Float    
+  createdAt  DateTime @default(now()) 
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+
+  
+}
