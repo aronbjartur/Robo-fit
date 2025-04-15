@@ -1,4 +1,3 @@
-// src/app/api/exercises/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
@@ -16,20 +15,12 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const exerciseIdParam = params.id;
-  const exerciseId = parseInt(exerciseIdParam, 10);
-  if (isNaN(exerciseId)) {
-    return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
-  }
+  const exerciseId = parseInt(params.id, 10);
+  if (isNaN(exerciseId)) { return NextResponse.json({ error: 'Invalid ID' }, { status: 400 }); }
 
   const authHeader = request.headers.get('Authorization');
-  if (!jwtSecret) {
-    console.error("DELETE Exercise Config Error: JWT_SECRET not set");
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!jwtSecret) { console.error("DELETE Exercise Config Error: JWT_SECRET not set"); return NextResponse.json({ error: 'Server error' }, { status: 500 }); }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const token = authHeader.split(' ')[1];
   let userId: number;
   try {
@@ -38,35 +29,26 @@ export async function DELETE(
       throw new Error('Invalid token payload structure');
     }
     userId = decoded.id;
-  } catch {
+  } catch { // Fjarlægja ónotaða error breytu (_e)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    // Use a transaction for safety and consistency
+    const exercise = await prisma.exercise.findUnique({
+      where: { id: exerciseId, userId: userId },
+      select: { id: true }
+    });
+    if (!exercise) { return NextResponse.json({ error: 'Not found' }, { status: 404 }); }
+
     await prisma.$transaction(async (tx) => {
-      // Verify that the exercise exists and belongs to the user
-      const exercise = await tx.exercise.findUnique({
-        where: { id: exerciseId, userId: userId },
-        select: { id: true },
-      });
-      if (!exercise) {
-        const nfError = new Error('Not found');
-        nfError.name = 'NotFoundError';
-        throw nfError;
-      }
-      // Delete related records before deleting the exercise
       await tx.workoutLog.deleteMany({ where: { exerciseId: exerciseId } });
       await tx.routineExercise.deleteMany({ where: { exerciseId: exerciseId } });
-      await tx.exercise.delete({ where: { id: exerciseId } });
+      await tx.exercise.delete({ where: { id: exerciseId, userId: userId } });
     });
 
     return new NextResponse(null, { status: 204 });
-  } catch (error: unknown) {
-    // Check if error is an instance of Error and has the name "NotFoundError"
-    if (error instanceof Error && error.name === 'NotFoundError') {
-      return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 });
-    }
+
+  } catch (error) {
     console.error(`API Error deleting exercise ${exerciseId}:`, error);
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }
