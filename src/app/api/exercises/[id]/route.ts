@@ -45,17 +45,16 @@ export async function DELETE(
   try {
     // Use a transaction for safety and consistency
     await prisma.$transaction(async (tx) => {
-      // First, verify that the exercise exists and belongs to the user
+      // Verify that the exercise exists and belongs to the user
       const exercise = await tx.exercise.findUnique({
         where: { id: exerciseId, userId: userId },
-        select: { id: true }
+        select: { id: true },
       });
       if (!exercise) {
         const nfError = new Error('Not found');
         nfError.name = 'NotFoundError';
         throw nfError;
       }
-
       // Delete related records before deleting the exercise
       await tx.workoutLog.deleteMany({ where: { exerciseId: exerciseId } });
       await tx.routineExercise.deleteMany({ where: { exerciseId: exerciseId } });
@@ -64,12 +63,8 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'name' in error &&
-      (error as any).name === 'NotFoundError'
-    ) {
+    // Check if error is an instance of Error and has the name "NotFoundError"
+    if (error instanceof Error && error.name === 'NotFoundError') {
       return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 });
     }
     console.error(`API Error deleting exercise ${exerciseId}:`, error);
