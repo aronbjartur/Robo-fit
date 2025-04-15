@@ -1,6 +1,8 @@
 # ROBOFIT
 Einstakling verkefni Vefforitun 2 
 
+Enginn hýsing þar sem vercel gefur vandi sem er ekki hægt að leysa
+
 ## Um síðuna
 Haltu utan um upplýsingar um æfingarnar þínar í ræktini með því að skrá þær niður svo þær gleymast aldrei. Gerðu aðgang .annig þetta er bara hulið frá öðrum notendum. búðu til æfingar eða rútinur ef þú vilt skrá niður. sjáðu gröf af framförum þínum. 
 
