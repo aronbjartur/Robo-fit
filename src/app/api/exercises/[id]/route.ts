@@ -1,6 +1,6 @@
 // src/app/api/exercises/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client'; // Import Prisma týpur
+import { PrismaClient} from '@prisma/client'; // Import Prisma týpur
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
