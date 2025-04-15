@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
@@ -7,15 +8,22 @@ const jwtSecret = process.env.JWT_SECRET;
 
 interface JwtPayload {
   id: number;
-  username: string;
-  admin: boolean;
+  username: string; 
+  admin: boolean;   
+}
+
+interface RouteContext {
+  params: {
+    id: string; 
+  }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: Request, 
+  context: RouteContext 
 ) {
-  const exerciseId = parseInt(params.id, 10);
+  const exerciseIdParam = context.params.id;
+  const exerciseId = parseInt(exerciseIdParam, 10);
   if (isNaN(exerciseId)) { return NextResponse.json({ error: 'Invalid ID' }, { status: 400 }); }
 
   const authHeader = request.headers.get('Authorization');
@@ -25,11 +33,9 @@ export async function DELETE(
   let userId: number;
   try {
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-    if (!decoded || typeof decoded.id !== 'number') {
-      throw new Error('Invalid token payload structure');
-    }
+    if (!decoded || typeof decoded.id !== 'number') { throw new Error('Invalid token payload structure'); }
     userId = decoded.id;
-  } catch { // Fjarlægja ónotaða error breytu (_e)
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -38,15 +44,15 @@ export async function DELETE(
       where: { id: exerciseId, userId: userId },
       select: { id: true }
     });
-    if (!exercise) { return NextResponse.json({ error: 'Not found' }, { status: 404 }); }
+    if (!exercise) { return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 }); } 
 
     await prisma.$transaction(async (tx) => {
       await tx.workoutLog.deleteMany({ where: { exerciseId: exerciseId } });
       await tx.routineExercise.deleteMany({ where: { exerciseId: exerciseId } });
-      await tx.exercise.delete({ where: { id: exerciseId, userId: userId } });
+      await tx.exercise.delete({ where: { id: exerciseId } });
     });
 
-    return new NextResponse(null, { status: 204 });
+    return new NextResponse(null, { status: 204 }); 
 
   } catch (error) {
     console.error(`API Error deleting exercise ${exerciseId}:`, error);
